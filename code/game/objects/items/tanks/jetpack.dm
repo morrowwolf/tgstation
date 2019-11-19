@@ -14,14 +14,15 @@
 	var/full_speed = TRUE // If the jetpack will have a speedboost in space/nograv or not
 	var/datum/effect_system/trail_follow/ion/ion_trail
 
-/obj/item/tank/jetpack/New()
-	..()
-	if(gas_type)
-		air_contents.assert_gas(gas_type)
-		air_contents.gases[gas_type][MOLES] = (6 * ONE_ATMOSPHERE) * volume / (R_IDEAL_GAS_EQUATION * T20C)
-
+/obj/item/tank/jetpack/Initialize()
+	. = ..()
 	ion_trail = new
 	ion_trail.set_up(src)
+
+/obj/item/tank/jetpack/populate_gas()
+	if(gas_type)
+		air_contents.assert_gas(gas_type)
+		air_contents.gases[gas_type][MOLES] = ((6 * ONE_ATMOSPHERE) * volume / (R_IDEAL_GAS_EQUATION * T20C))
 
 /obj/item/tank/jetpack/ui_action_click(mob/user, action)
 	if(istype(action, /datum/action/item_action/toggle_jetpack))
@@ -55,7 +56,7 @@
 	ion_trail.start()
 	RegisterSignal(user, COMSIG_MOVABLE_MOVED, .proc/move_react)
 	if(full_speed)
-		user.add_movespeed_modifier(MOVESPEED_ID_JETPACK, priority=100, multiplicative_slowdown=-2, movetypes=FLOATING, conflict=MOVE_CONFLICT_JETPACK)
+		user.add_movespeed_modifier(MOVESPEED_ID_JETPACK, priority=100, multiplicative_slowdown=-0.25, movetypes=FLOATING, conflict=MOVE_CONFLICT_JETPACK)
 
 /obj/item/tank/jetpack/proc/turn_off(mob/user)
 	on = FALSE
@@ -72,18 +73,18 @@
 	if(!on)
 		return
 	if((num < 0.005 || air_contents.total_moles() < num))
-		turn_off()
+		turn_off(user)
 		return
 
 	var/datum/gas_mixture/removed = air_contents.remove(num)
 	if(removed.total_moles() < 0.005)
-		turn_off()
+		turn_off(user)
 		return
 
 	var/turf/T = get_turf(user)
 	T.assume_air(removed)
 
-	return 1
+	return TRUE
 
 /obj/item/tank/jetpack/suicide_act(mob/user)
 	if (istype(user, /mob/living/carbon/human/))
@@ -107,22 +108,22 @@
 	if(!on)
 		return
 	if((num < 0.005 || air_contents.total_moles() < num))
-		turn_off()
+		turn_off(user)
 		return
 	if(rand(0,250) == 0)
 		to_chat(user, "<span class='notice'>You feel your jetpack's engines cut out.</span>")
-		turn_off()
+		turn_off(user)
 		return
 
 	var/datum/gas_mixture/removed = air_contents.remove(num)
 	if(removed.total_moles() < 0.005)
-		turn_off()
+		turn_off(user)
 		return
 
 	var/turf/T = get_turf(user)
 	T.assume_air(removed)
 
-	return 1
+	return TRUE
 
 /obj/item/tank/jetpack/void
 	name = "void jetpack (oxygen)"
@@ -146,7 +147,7 @@
 	w_class = WEIGHT_CLASS_NORMAL
 
 /obj/item/tank/jetpack/oxygen/captain
-	name = "\improper Captain's jetpack"
+	name = "captain's jetpack"
 	desc = "A compact, lightweight jetpack containing a high amount of compressed oxygen."
 	icon_state = "jetpack-captain"
 	item_state = "jetpack-captain"
@@ -186,8 +187,8 @@
 	var/obj/item/tank/internals/tank = null
 	var/mob/living/carbon/human/cur_user
 
-/obj/item/tank/jetpack/suit/New()
-	..()
+/obj/item/tank/jetpack/suit/Initialize()
+	. = ..()
 	STOP_PROCESSING(SSobj, src)
 	temp_air_contents = air_contents
 
